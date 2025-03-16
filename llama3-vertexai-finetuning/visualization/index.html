@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Llama 3 Logic Puzzle Comparison</title>
+    <style>
+        :root {
+            --primary-color: #4f46e5;
+            --primary-hover: #4338ca;
+            --background-color: #f3f4f6;
+            --card-bg: #ffffff;
+            --text-color: #1f2937;
+            --text-secondary: #6b7280;
+            --border-color: #e5e7eb;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --error-color: #ef4444;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            background-color: var(--background-color);
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: var(--primary-color);
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 150px;
+            padding: 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 0.375rem;
+            font-size: 1rem;
+            font-family: inherit;
+            resize: vertical;
+            margin-bottom: 1rem;
+        }
+
+        .params-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .param-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            font-size: 0.875rem;
+            font-weight: 500;
+            margin-bottom: 0.25rem;
+        }
+
+        .param-value {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-top: 0.25rem;
+        }
+
+        input[type="range"] {
+            width: 100%;
+        }
+
+        .button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 0.375rem;
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .button:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .button-secondary {
+            background-color: white;
+            color: var(--primary-color);
+            border: 1px solid var(--primary-color);
+        }
+
+        .button-secondary:hover {
+            background-color: #f9fafb;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .result-card {
+            background-color: var(--card-bg);
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            overflow: hidden;
+        }
+
+        .result-header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 0.75rem 1rem;
+            font-weight: 600;
+        }
+
+        .result-content {
+            padding: 1rem;
+            white-space: pre-wrap;
+            overflow-wrap: break-word;
+            font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+            font-size: 0.875rem;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .samples-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .sample-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 0.375rem;
+            padding: 1rem;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .sample-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        .sample-title {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .sample-preview {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .api-config {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .api-config input {
+            flex: 1;
+            padding: 0.5rem 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .status-connected {
+            background-color: var(--success-color);
+        }
+
+        .status-disconnected {
+            background-color: var(--error-color);
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 1rem 0;
+        }
+
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: var(--primary-color);
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            background-color: #fee2e2;
+            border: 1px solid #ef4444;
+            color: #b91c1c;
+            padding: 0.75rem 1rem;
+            border-radius: 0.375rem;
+            margin-bottom: 1rem;
+        }
+
+        .warning {
+            background-color: #fef3c7;
+            border: 1px solid #f59e0b;
+            color: #92400e;
+            padding: 0.75rem 1rem;
+            border-radius: 0.375rem;
+            margin-bottom: 1rem;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .metric-card {
+            background-color: var(--card-bg);
+            border-radius: 0.375rem;
+            padding: 1rem;
+            text-align: center;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .metric-label {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.25rem;
+        }
+
+        .metric-value {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .metric-delta {
+            font-size: 0.875rem;
+            color: var(--success-color);
+        }
+
+        .metric-delta.negative {
+            color: var(--error-color);
+        }
+
+        footer {
+            margin-top: 3rem;
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            padding: 1rem 0;
+            border-top: 1px solid var(--border-color);
+        }
+
+        @media (max-width: 768px) {
+            .results-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🧩 Llama 3 Logic Puzzle Comparison</h1>
+            <div class="subtitle">Compare base and fine-tuned Llama 3 8B models on logic puzzles</div>
+        </header>
+
+        <div class="card">
+            <div class="card-title">API Configuration</div>
+            <div class="api-config">
+                <input type="text" id="api-url" placeholder="API URL" value="http://localhost:5000">
+                <button class="button button-secondary" id="check-connection">Check Connection</button>
+            </div>
+            <div id="connection-status" class="status">
+                <div class="status-indicator status-disconnected"></div>
+                <span>Not connected</span>
+            </div>
+            <div id="connection-error" class="error" style="display: none;"></div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">Prompt</div>
+            <textarea id="prompt-input" placeholder="Enter a logic puzzle or any other prompt here..."></textarea>
+            
+            <div class="card-title">Generation Parameters</div>
+            <div class="params-grid">
+                <div class="param-group">
+                    <label for="max-tokens">Max Tokens</label>
+                    <input type="range" id="max-tokens" min="64" max="2048" value="512" step="64">
+                    <div class="param-value" id="max-tokens-value">512</div>
+                </div>
+                <div class="param-group">
+                    <label for="temperature">Temperature</label>
+                    <input type="range" id="temperature" min="0.0" max="1.0" value="0.2" step="0.05">
+                    <div class="param-value" id="temperature-value">0.2</div>
+                </div>
+                <div class="param-group">
+                    <label for="top-p">Top P</label>
+                    <input type="range" id="top-p" min="0.0" max="1.0" value="0.8" step="0.05">
+                    <div class="param-value" id="top-p-value">0.8</div>
+                </div>
+                <div class="param-group">
+                    <label for="top-k">Top K</label>
+                    <input type="range" id="top-k" min="1" max="100" value="40" step="1">
+                    <div class="param-value" id="top-k-value">40</div>
+                </div>
+            </div>
+            
+            <button id="compare-btn" class="button">Compare Models</button>
+            
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Generating responses... This may take a minute.</p>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">Sample Logic Puzzles</div>
+            <div class="samples-grid" id="samples-container">
+                <!-- Sample puzzles will be loaded here -->
+            </div>
+        </div>
+
+        <div id="results-container" style="display: none;">
+            <div class="results-grid">
+                <div class="result-card">
+                    <div class="result-header">Base Llama 3 8B</div>
+                    <div class="result-content" id="base-output">Results will appear here...</div>
+                </div>
+                <div class="result-card">
+                    <div class="result-header">Fine-tuned Llama 3 8B</div>
+                    <div class="result-content" id="finetuned-output">Results will appear here...</div>
+                </div>
+            </div>
+
+            <div class="card" id="metrics-container" style="margin-top: 2rem;">
+                <div class="card-title">Analysis</div>
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-label">Base Model Length</div>
+                        <div class="metric-value" id="base-length">0</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Fine-tuned Model Length</div>
+                        <div class="metric-value" id="finetuned-length">0</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Length Difference</div>
+                        <div class="metric-value" id="length-diff">0</div>
+                        <div class="metric-delta" id="length-diff-delta">+0</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Base Generation Time</div>
+                        <div class="metric-value" id="base-time">0.00s</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Fine-tuned Generation Time</div>
+                        <div class="metric-value" id="finetuned-time">0.00s</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            LLama 3 8B Fine-tuning and Comparison Project
+        </footer>
+    </div>
+
+    <script>
+        // Sample puzzles
+        const samplePuzzles = [
+            {
+                title: "Five Friends' Drinks",
+                text: "Five friends (Alex, Brett, Charlie, Dana, and Emerson) each ordered a different drink (coffee, tea, soda, water, and juice). From the following clues, can you determine who ordered which drink?\n- The person who ordered coffee sits between the people who ordered tea and juice.\n- Dana sits next to the person who ordered water.\n- Brett ordered soda.\n- Charlie sits at one end of the table.\n- Emerson sits next to Alex."
+            },
+            {
+                title: "Barber Puzzle",
+                text: "In a small town, there are only three barbers (Albert, Bernard, and Charles). From the following clues, determine which barber cuts whose hair:\n- No barber cuts his own hair.\n- Albert doesn't cut Bernard's hair.\n- The person who cuts Charles's hair has his hair cut by the person whose hair is cut by Charles.\n- Albert's hair is not cut by the person whose hair Albert cuts."
+            },
+            {
+                title: "Book Arrangement",
+                text: "Five books (Art, Biology, Chemistry, Drama, and Economics) need to be arranged on a shelf. From the following clues, determine their order from left to right:\n- Art and Drama must be separated by exactly one book.\n- Biology must be somewhere to the right of Chemistry.\n- Economics must be at one of the ends.\n- The Biology book must be adjacent to exactly one other book."
+            }
+        ];
+
+        // DOM elements
+        const apiUrlInput = document.getElementById('api-url');
+        const checkConnectionBtn = document.getElementById('check-connection');
+        const connectionStatus = document.getElementById('connection-status');
+        const connectionError = document.getElementById('connection-error');
+        
+        const promptInput = document.getElementById('prompt-input');
+        const maxTokensInput = document.getElementById('max-tokens');
+        const maxTokensValue = document.getElementById('max-tokens-value');
+        const temperatureInput = document.getElementById('temperature');
+        const temperatureValue = document.getElementById('temperature-value');
+        const topPInput = document.getElementById('top-p');
+        const topPValue = document.getElementById('top-p-value');
+        const topKInput = document.getElementById('top-k');
+        const topKValue = document.getElementById('top-k-value');
+        
+        const compareBtn = document.getElementById('compare-btn');
+        const loadingElement = document.getElementById('loading');
+        const resultsContainer = document.getElementById('results-container');
+        const baseOutput = document.getElementById('base-output');
+        const finetunedOutput = document.getElementById('finetuned-output');
+        
+        const samplesContainer = document.getElementById('samples-container');
+        
+        const baseLength = document.getElementById('base-length');
+        const finetunedLength = document.getElementById('finetuned-length');
+        const lengthDiff = document.getElementById('length-diff');
+        const lengthDiffDelta = document.getElementById('length-diff-delta');
+        const baseTime = document.getElementById('base-time');
+        const finetunedTime = document.getElementById('finetuned-time');
+        
+        // Update parameter values display
+        maxTokensInput.addEventListener('input', () => {
+            maxTokensValue.textContent = maxTokensInput.value;
+        });
+        
+        temperatureInput.addEventListener('input', () => {
+            temperatureValue.textContent = temperatureInput.value;
+        });
+        
+        topPInput.addEventListener('input', () => {
+            topPValue.textContent = topPInput.value;
+        });
+        
+        topKInput.addEventListener('input', () => {
+            topKValue.textContent = topKInput.value;
+        });
+        
+        // Add sample puzzles to the container
+        samplePuzzles.forEach((puzzle, index) => {
+            const sampleCard = document.createElement('div');
+            sampleCard.className = 'sample-card';
+            
+            const titleElement = document.createElement('div');
+            titleElement.className = 'sample-title';
+            titleElement.textContent = puzzle.title;
+            
+            const previewElement = document.createElement('div');
+            previewElement.className = 'sample-preview';
+            previewElement.textContent = puzzle.text;
+            
+            sampleCard.appendChild(titleElement);
+            sampleCard.appendChild(previewElement);
+            
+            sampleCard.addEventListener('click', () => {
+                promptInput.value = puzzle.text;
+                // Scroll to prompt input
+                promptInput.scrollIntoView({ behavior: 'smooth' });
+            });
+            
+            samplesContainer.appendChild(sampleCard);
+        });
+        
+        // Also try to load samples from API when available
+        async function loadSamplesFromAPI() {
+            try {
+                const response = await fetch(`${apiUrlInput.value}/samples`);
+                if (response.ok) {
+                    const data = await response.json();
+                    const samples = data.samples;
+                    
+                    // Clear existing samples
+                    samplesContainer.innerHTML = '';
+                    
+                    // Add new samples from API
+                    Object.entries(samples).forEach(([name, content]) => {
+                        const sampleCard = document.createElement('div');
+                        sampleCard.className = 'sample-card';
+                        
+                        const titleElement = document.createElement('div');
+                        titleElement.className = 'sample-title';
+                        titleElement.textContent = name;
+                        
+                        const previewElement = document.createElement('div');
+                        previewElement.className = 'sample-preview';
+                        previewElement.textContent = content.question;
+                        
+                        sampleCard.appendChild(titleElement);
+                        sampleCard.appendChild(previewElement);
+                        
+                        sampleCard.addEventListener('click', () => {
+                            promptInput.value = content.question;
+                            promptInput.scrollIntoView({ behavior: 'smooth' });
+                        });
+                        
+                        samplesContainer.appendChild(sampleCard);
+                    });
+                }
+            } catch (error) {
+                console.warn("Could not load samples from API: ", error);
+                // Fallback to default samples is already handled
+            }
+        }
+        
+        // API connection management
+        let apiUrl = apiUrlInput.value;
+        
+        async function checkApiConnection() {
+            try {
+                const statusIndicator = connectionStatus.querySelector('.status-indicator');
+                const statusText = connectionStatus.querySelector('span');
+                
+                statusIndicator.className = 'status-indicator';
+                statusText.textContent = 'Checking connection...';
+                connectionError.style.display = 'none';
+                
+                const response = await fetch(`${apiUrl}/health`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    statusIndicator.className = 'status-indicator status-connected';
+                    statusText.textContent = `Connected - Available models: ${data.models.join(', ')}`;
+                    
+                    // Try to load samples from API
+                    loadSamplesFromAPI();
+                    
+                    return true;
+                } else {
+                    statusIndicator.className = 'status-indicator status-disconnected';
+                    statusText.textContent = 'Connection failed';
+                    connectionError.textContent = `Error: HTTP ${response.status} - ${response.statusText}`;
+                    connectionError.style.display = 'block';
+                    return false;
+                }
+            } catch (error) {
+                const statusIndicator = connectionStatus.querySelector('.status-indicator');
+                const statusText = connectionStatus.querySelector('span');
+                
+                statusIndicator.className = 'status-indicator status-disconnected';
+                statusText.textContent = 'Connection failed';
+                connectionError.textContent = `Error: ${error.message}`;
+                connectionError.style.display = 'block';
+                return false;
+            }
+        }
+        
+        checkConnectionBtn.addEventListener('click', () => {
+            apiUrl = apiUrlInput.value;
+            checkApiConnection();
+        });
+        
+        // Compare models function
+        compareBtn.addEventListener('click', async () => {
+            const prompt = promptInput.value.trim();
+            
+            if (!prompt) {
+                alert('Please enter a prompt first.');
+                return;
+            }
+            
+            // Show loading spinner and hide previous results
+            loadingElement.style.display = 'block';
+            resultsContainer.style.display = 'none';
+            
+            // Prepare request data
+            const requestData = {
+                prompt: prompt,
+                max_tokens: parseInt(maxTokensInput.value),
+                temperature: parseFloat(temperatureInput.value),
+                top_p: parseFloat(topPInput.value),
+                top_k: parseInt(topKInput.value)
+            };
+            
+            try {
+                // Check connection first
+                const isConnected = await checkApiConnection();
+                
+                if (!isConnected) {
+                    loadingElement.style.display = 'none';
+                    alert('Failed to connect to API. Please check the API URL and connection.');
+                    return;
+                }
+                
+                // Call API to compare models
+                const response = await fetch(`${apiUrl}/compare`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestData)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                // Update output areas
+                if (data.base_model && data.base_model.response_only) {
+                    baseOutput.textContent = data.base_model.response_only;
+                } else if (data.base_model && data.base_model.error) {
+                    baseOutput.textContent = `Error: ${data.base_model.error}`;
+                } else {
+                    baseOutput.textContent = 'No response from base model';
+                }
+                
+                if (data.finetuned_model && data.finetuned_model.response_only) {
+                    finetunedOutput.textContent = data.finetuned_model.response_only;
+                } else if (data.finetuned_model && data.finetuned_model.error) {
+                    finetunedOutput.textContent = `Error: ${data.finetuned_model.error}`;
+                } else {
+                    finetunedOutput.textContent = 'No response from fine-tuned model';
+                }
+                
+                // Update metrics
+                const baseResponseLength = (data.base_model && data.base_model.response_only) ? 
+                    data.base_model.response_only.length : 0;
+                    
+                const finetunedResponseLength = (data.finetuned_model && data.finetuned_model.response_only) ? 
+                    data.finetuned_model.response_only.length : 0;
+                    
+                const lengthDifference = finetunedResponseLength - baseResponseLength;
+                
+                baseLength.textContent = baseResponseLength;
+                finetunedLength.textContent = finetunedResponseLength;
+                lengthDiff.textContent = Math.abs(lengthDifference);
+                
+                if (lengthDifference > 0) {
+                    lengthDiffDelta.textContent = `+${lengthDifference}`;
+                    lengthDiffDelta.className = 'metric-delta';
+                } else if (lengthDifference < 0) {
+                    lengthDiffDelta.textContent = `${lengthDifference}`;
+                    lengthDiffDelta.className = 'metric-delta negative';
+                } else {
+                    lengthDiffDelta.textContent = '0';
+                    lengthDiffDelta.className = 'metric-delta';
+                }
+                
+                // Update generation times if available
+                if (data.base_model && data.base_model.generation_time) {
+                    baseTime.textContent = `${data.base_model.generation_time.toFixed(2)}s`;
+                }
+                
+                if (data.finetuned_model && data.finetuned_model.generation_time) {
+                    finetunedTime.textContent = `${data.finetuned_model.generation_time.toFixed(2)}s`;
+                }
+                
+                // Show results
+                resultsContainer.style.display = 'block';
+            } catch (error) {
+                console.error('Error:', error);
+                
+                // Show error in result areas
+                baseOutput.textContent = 'Error: ' + error.message;
+                finetunedOutput.textContent = 'Error: ' + error.message;
+                
+                // Still show results container
+                resultsContainer.style.display = 'block';
+            } finally {
+                // Hide loading spinner
+                loadingElement.style.display = 'none';
+            }
+        });
+        
+        // Check API health on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            checkApiConnection();
+        });
+    </script>
+</body>
+</html>
