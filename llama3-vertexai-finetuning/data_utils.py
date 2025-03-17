@@ -37,9 +37,14 @@ def load_logic_puzzle_dataset() -> Tuple[List[Dict[str, str]], List[Dict[str, st
         # Format for instruction fine-tuning
         formatted_data = []
         for item in dataset["train"]:
+            answer = item.get('label_a', 'Answer not available')
+            # Convert answer to string if it's not already
+            if not isinstance(answer, str):
+                answer = json.dumps(answer)
+                
             formatted_data.append({
                 "input_text": f"Solve this logic puzzle:\nStory: {item.get('story', '')}\nClues: {item.get('clues', '')}",
-                "output_text": item.get('label_a', 'Answer not available')
+                "output_text": answer
             })
         
         # Split into train and evaluation sets
@@ -144,10 +149,19 @@ def save_sample_puzzles(puzzle_examples: List[Dict[str, Any]]) -> None:
     
     for i, example in enumerate(puzzle_examples):
         puzzle_name = f"Puzzle {i+1}"
-        samples[puzzle_name] = {
-            "question": example.get("Question", "No question available"),
-            "answer": example.get("Answer", "No answer available")
-        }
+        
+        # Handle the case where example is a string
+        if isinstance(example, str):
+            samples[puzzle_name] = {
+                "question": example,
+                "answer": "No answer available"
+            }
+        # Handle the case where example is a dictionary
+        else:
+            samples[puzzle_name] = {
+                "question": example.get("Question", example.get("story", "No question available")),
+                "answer": example.get("Answer", example.get("label_a", "No answer available"))
+            }
     
     with open(config.SAMPLE_PUZZLES_PATH, 'w') as f:
         json.dump(samples, f, indent=2)
