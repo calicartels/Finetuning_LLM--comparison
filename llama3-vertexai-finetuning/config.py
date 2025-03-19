@@ -20,7 +20,7 @@ DEFAULT_CREDENTIALS_PATH = next((
 ), None) if os.path.exists(CREDENTIALS_FOLDER) else None
 
 # Vertex AI Model settings
-BASE_MODEL_ID = "llama3-8b"
+BASE_MODEL_ID = "projects/695116221974/locations/us-central1/models/7845865386670030848"
 BASE_MODEL_DISPLAY_NAME = "Llama 3 8B"
 TUNED_MODEL_DISPLAY_NAME = "llama3-logic-puzzle"
 

@@ -45,7 +45,7 @@ def load_logic_puzzle_dataset() -> Tuple[List[Dict[str, str]], List[Dict[str, st
             formatted_data.append({
                 "input_text": f"Solve this logic puzzle:\nStory: {item.get('story', '')}\nClues: {item.get('clues', '')}",
                 "output_text": answer
-            })
+            })            app.run(port=5001)
         
         # Split into train and evaluation sets
         train_size = int(len(formatted_data) * config.TRAIN_TEST_SPLIT)
