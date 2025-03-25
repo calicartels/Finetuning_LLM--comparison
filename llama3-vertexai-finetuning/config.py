@@ -6,12 +6,19 @@ from pathlib import Path
 
 import os
 
+
 # Google Cloud settings
 PROJECT_ID = "aipi590-454522"
-LOCATION = "us-east1"
-REGION = "us-east1"
+LOCATION = "us-central1"  
+REGION = "us-central1"
+BASE_MODEL_REGION = "us-central1"  # Region for the base model endpoint
 BUCKET_NAME = "logic-puzzle-dataset"
 BUCKET_URI = f"gs://{BUCKET_NAME}"
+
+
+BASE_ENDPOINT_ID = "2082533297124016128"
+FINETUNED_ENDPOINT_ID = "3447123984217276416"
+
 
 # Path to credentials folder at root
 CREDENTIALS_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "credentials")
@@ -19,8 +26,6 @@ CREDENTIALS_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "c
 # Explicitly set the path to your aipi590-454522 service account key
 DEFAULT_CREDENTIALS_PATH = os.path.join(CREDENTIALS_FOLDER, "aipi590-454522-84ac69f97395.json")
 
-# Path to credentials folder at root
-CREDENTIALS_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "credentials")
 # Will look for any .json file in the credentials folder
 DEFAULT_CREDENTIALS_PATH = next((
     os.path.join(CREDENTIALS_FOLDER, f) for f in os.listdir(CREDENTIALS_FOLDER) 
@@ -62,22 +67,6 @@ SAMPLE_PUZZLES_PATH = os.path.join(DATA_DIR, "sample_puzzles.json")
 
 # Example prompts for testing
 SAMPLE_PROMPTS = [
-    """Five friends (Alex, Brett, Charlie, Dana, and Emerson) each ordered a different drink (coffee, tea, soda, water, and juice). From the following clues, can you determine who ordered which drink?
-- The person who ordered coffee sits between the people who ordered tea and juice.
-- Dana sits next to the person who ordered water.
-- Brett ordered soda.
-- Charlie sits at one end of the table.
-- Emerson sits next to Alex.""",
-    
-    """In a small town, there are only three barbers (Albert, Bernard, and Charles). From the following clues, determine which barber cuts whose hair:
-- No barber cuts his own hair.
-- Albert doesn't cut Bernard's hair.
-- The person who cuts Charles's hair has his hair cut by the person whose hair is cut by Charles.
-- Albert's hair is not cut by the person whose hair Albert cuts.""",
-    
-    """Five books (Art, Biology, Chemistry, Drama, and Economics) need to be arranged on a shelf. From the following clues, determine their order from left to right:
-- Art and Drama must be separated by exactly one book.
-- Biology must be somewhere to the right of Chemistry.
-- Economics must be at one of the ends.
-- The Biology book must be adjacent to exactly one other book."""
+    """Optimization of actions and planning
+You have a list of tasks to complete: A, B, C, D, and E. Task A takes 1 hour, B takes 3 hours, C takes 2 hours, D takes 4 hours, and E takes 5 hours. You have two workers at your disposal. Each of the workers can only handle one task at a time, but tasks can be done in parallel. What is the minimum number of hours required to finish all tasks if the workers can work simultaneously and start at the same time?""",
 ]

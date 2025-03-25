@@ -1,266 +1,176 @@
 """
-Streamlit app for comparing Llama 3 models
+Flask API for serving Llama 3 models
 """
 import os
-import sys
 import json
-import time
+import logging
 from typing import Dict, Any
 
-import streamlit as st
-import plotly.graph_objects as go
-
-# Add parent directory to path to import project modules
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from flask import Flask, request, jsonify, send_from_directory
+from flask_cors import CORS
 
 import config
 from auths import setup_google_auth
-from model_service import load_models, generate_text, compare_models
-from data_utils import load_sample_puzzles
+from model_service import load_models, generate_text, compare_models, get_available_models
 
-# Page configuration
-st.set_page_config(
-    page_title="Llama 3 Logic Puzzle Comparison",
-    page_icon="🧩",
-    layout="wide",
-    initial_sidebar_state="expanded"
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
+logger = logging.getLogger("api")
 
-# Initialize session state
-if "generated_responses" not in st.session_state:
-    st.session_state.generated_responses = {}
+# Initialize Flask app
+app = Flask(__name__, static_folder='visualization')
+CORS(app)  # Enable CORS for all routes
 
-if "models_loaded" not in st.session_state:
-    st.session_state.models_loaded = False
-
-
-def load_models_with_status():
-    """Load models and update session state"""
-    with st.spinner("Loading models..."):
-        try:
-            # Set up Google Cloud authentication
-            setup_google_auth()
-            
-            # Load models
-            available_models = load_models()
-            
-            st.session_state.models_loaded = True
-            st.session_state.available_models = list(available_models.keys())
-            
-            return True
-        except Exception as e:
-            st.error(f"Error loading models: {str(e)}")
-            return False
+# Initialize on startup
+setup_google_auth()
+logger.info("Initialized Google Cloud authentication")
 
 
-def display_sidebar():
-    """Display sidebar with controls and information"""
-    st.sidebar.title("🧩 Llama 3 Comparison")
-    
-    # Model loading
-    if not st.session_state.models_loaded:
-        if st.sidebar.button("Load Models", use_container_width=True):
-            load_models_with_status()
-    else:
-        st.sidebar.success(f"Models loaded: {', '.join(st.session_state.available_models)}")
-    
-    st.sidebar.divider()
-    
-    # Google Cloud Configuration
-    st.sidebar.subheader("Google Cloud Configuration")
-    
-    if "GOOGLE_APPLICATION_CREDENTIALS" in os.environ:
-        st.sidebar.success(f"Using credentials: {os.environ['GOOGLE_APPLICATION_CREDENTIALS']}")
-    elif config.DEFAULT_CREDENTIALS_PATH:
-        st.sidebar.success(f"Using credentials: {config.DEFAULT_CREDENTIALS_PATH}")
-    else:
-        st.sidebar.warning("No explicit credentials found. Using application default.")
-    
-    # Show project ID and region
-    st.sidebar.text(f"Project ID: {config.PROJECT_ID}")
-    st.sidebar.text(f"Region: {config.REGION}")
-    
-    st.sidebar.divider()
-    
-    # Generation parameters
-    st.sidebar.subheader("Generation Parameters")
-    
-    params = {
-        "max_tokens": st.sidebar.slider("Max Tokens", 64, 2048, 512, 64),
-        "temperature": st.sidebar.slider("Temperature", 0.0, 1.0, 0.2, 0.05),
-        "top_p": st.sidebar.slider("Top P", 0.0, 1.0, 0.8, 0.05),
-        "top_k": st.sidebar.slider("Top K", 1, 100, 40, 1),
-    }
-    
-    st.sidebar.divider()
-    
-    # Project information
-    st.sidebar.subheader("About")
-    st.sidebar.info(
-        "This app compares the original Llama 3 8B model with a "
-        "fine-tuned version trained on logic puzzles. "
-        "It demonstrates how fine-tuning can improve performance "
-        "on specific tasks."
-    )
-    
-    return params
+@app.route('/')
+def index():
+    """Serve the web interface"""
+    return send_from_directory('visualization', 'index.html')
 
 
-def main():
-    """Main application function"""
-    st.title("🧩 Llama 3 Logic Puzzle Comparison")
-    
-    # Display sidebar and get parameters
-    params = display_sidebar()
-    
-    # Main content
-    st.markdown(
-        """
-        Compare the original Llama 3 8B model with a version fine-tuned on logic puzzles.
-        Enter a logic puzzle or select one of the samples below.
-        """
-    )
-    
-    # Input area
-    user_input = st.text_area(
-        "Enter your logic puzzle or any other prompt:",
-        height=150,
-        placeholder="Enter a logic puzzle here..."
-    )
-    
-    # Sample puzzles
-    st.subheader("Sample Logic Puzzles")
-    
-    sample_cols = st.columns(3)
-    
+@app.route('/health')
+def health_check():
+    """Check API health status"""
     try:
-        samples = load_sample_puzzles()
+        # Try to load models
+        models = load_models()
+        available_models = list(models.keys())
         
-        for i, (name, puzzle) in enumerate(samples.items()):
-            col_idx = i % 3
-            with sample_cols[col_idx]:
-                if st.button(name, key=f"sample_{i}", use_container_width=True):
-                    st.session_state.user_input = puzzle["question"]
-                    st.experimental_rerun()
+        return jsonify({
+            "status": "healthy",
+            "models": available_models,
+            "project_id": config.PROJECT_ID,
+            "region": config.REGION
+        })
     except Exception as e:
-        st.warning(f"Could not load sample puzzles: {str(e)}")
+        logger.error(f"Health check failed: {str(e)}")
+        return jsonify({
+            "status": "unhealthy",
+            "error": str(e),
+            "models": []
+        }), 500
+
+
+@app.route('/models')
+def get_models():
+    """Get information about available models"""
+    try:
+        model_info = get_available_models()
+        return jsonify({"models": model_info})
+    except Exception as e:
+        logger.error(f"Error getting models: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/generate', methods=['POST'])
+def generate():
+    """Generate text from a specified model"""
+    try:
+        data = request.json
+        
+        if not data or 'prompt' not in data:
+            return jsonify({"error": "Missing required field: prompt"}), 400
+        
+        prompt = data['prompt']
+        model_type = data.get('model_type', 'base')
+        max_tokens = data.get('max_tokens', config.MAX_OUTPUT_TOKENS)
+        temperature = data.get('temperature', config.TEMPERATURE)
+        top_k = data.get('top_k', config.TOP_K)
+        top_p = data.get('top_p', config.TOP_P)
+        
+        response = generate_text(
+            prompt=prompt,
+            model_type=model_type,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            top_k=top_k,
+            top_p=top_p
+        )
+        
+        if 'error' in response:
+            return jsonify(response), 400
+        
+        return jsonify(response)
     
-    # Generate button
-    generate_col1, generate_col2 = st.columns([1, 3])
+    except Exception as e:
+        logger.error(f"Error in generate endpoint: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/compare', methods=['POST'])
+def compare():
+    """Compare responses from both models"""
+    try:
+        data = request.json
+        
+        if not data or 'prompt' not in data:
+            return jsonify({"error": "Missing required field: prompt"}), 400
+        
+        prompt = data['prompt']
+        max_tokens = data.get('max_tokens', config.MAX_OUTPUT_TOKENS)
+        temperature = data.get('temperature', config.TEMPERATURE)
+        top_k = data.get('top_k', config.TOP_K)
+        top_p = data.get('top_p', config.TOP_P)
+        
+        response = compare_models(
+            prompt=prompt,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            top_k=top_k,
+            top_p=top_p
+        )
+        
+        if 'error' in response:
+            return jsonify(response), 400
+        
+        return jsonify(response)
     
-    with generate_col1:
-        if not st.session_state.models_loaded:
-            st.warning("Please load models first")
-            generate_button = st.button(
-                "Load Models & Compare", 
-                type="primary", 
-                disabled=not user_input,
-                use_container_width=True
-            )
+    except Exception as e:
+        logger.error(f"Error in compare endpoint: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/samples')
+def get_samples():
+    """Get sample puzzles for testing"""
+    try:
+        samples_path = config.SAMPLE_PUZZLES_PATH
+        
+        if os.path.exists(samples_path):
+            with open(samples_path, 'r') as f:
+                samples = json.load(f)
         else:
-            generate_button = st.button(
-                "Compare Models", 
-                type="primary", 
-                disabled=not user_input,
-                use_container_width=True
-            )
+            # Return default samples from config
+            samples = {
+                f"Sample {i+1}": {
+                    "question": prompt,
+                    "answer": "Sample answer not available"
+                }
+                for i, prompt in enumerate(config.SAMPLE_PROMPTS)
+            }
+        
+        return jsonify({"samples": samples})
     
-    # Generation
-    if generate_button and user_input:
-        if not st.session_state.models_loaded:
-            load_success = load_models_with_status()
-            if not load_success:
-                st.stop()
-        
-        with st.spinner("Generating responses..."):
-            comparison = compare_models(
-                user_input,
-                max_tokens=params["max_tokens"],
-                temperature=params["temperature"],
-                top_k=params["top_k"],
-                top_p=params["top_p"]
-            )
-            
-            st.session_state.generated_responses = comparison
-    
-    # Display results
-    if "generated_responses" in st.session_state and st.session_state.generated_responses:
-        responses = st.session_state.generated_responses
-        
-        st.subheader("Model Comparison")
-        
-        if "warning" in responses:
-            st.warning(responses["warning"])
-        
-        if "error" in responses:
-            st.error(responses["error"])
-            st.stop()
-        
-        # Display responses in columns
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.markdown("### Base Llama 3 8B")
-            if "base_model" in responses and "response_only" in responses["base_model"]:
-                base_response = responses["base_model"]["response_only"]
-                st.markdown(f"```\n{base_response}\n```")
-                
-                generation_time = responses["base_model"].get("generation_time", 0)
-                if generation_time:
-                    st.caption(f"Generated in {generation_time:.2f} seconds")
-        
-        with col2:
-            st.markdown("### Fine-tuned Llama 3 8B")
-            if "finetuned_model" in responses and "response_only" in responses["finetuned_model"]:
-                tuned_response = responses["finetuned_model"]["response_only"]
-                st.markdown(f"```\n{tuned_response}\n```")
-                
-                generation_time = responses["finetuned_model"].get("generation_time", 0)
-                if generation_time:
-                    st.caption(f"Generated in {generation_time:.2f} seconds")
-        
-        # Metrics or analysis section
-        st.subheader("Analysis")
-        metric_cols = st.columns(3)
-        
-        with metric_cols[0]:
-            base_length = len(responses.get("base_model", {}).get("response_only", ""))
-            st.metric("Base Model Response Length", base_length)
-        
-        with metric_cols[1]:
-            tuned_length = len(responses.get("finetuned_model", {}).get("response_only", ""))
-            st.metric("Fine-tuned Model Response Length", tuned_length)
-        
-        with metric_cols[2]:
-            length_diff = tuned_length - base_length
-            st.metric("Length Difference", length_diff, f"{length_diff:+}")
-        
-        # Optionally add a visualization
-        if "base_model" in responses and "finetuned_model" in responses:
-            if "generation_time" in responses["base_model"] and "generation_time" in responses["finetuned_model"]:
-                base_time = responses["base_model"]["generation_time"]
-                tuned_time = responses["finetuned_model"]["generation_time"]
-                
-                fig = go.Figure()
-                fig.add_trace(go.Bar(
-                    x=["Base Model", "Fine-tuned Model"],
-                    y=[base_time, tuned_time],
-                    text=[f"{base_time:.2f}s", f"{tuned_time:.2f}s"],
-                    textposition="auto",
-                    marker_color=["#1f77b4", "#ff7f0e"]
-                ))
-                fig.update_layout(
-                    title="Generation Time Comparison",
-                    xaxis_title="Model",
-                    yaxis_title="Time (seconds)",
-                    height=300
-                )
-                st.plotly_chart(fig, use_container_width=True)
+    except Exception as e:
+        logger.error(f"Error getting samples: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
 
-if __name__ == "__main__":
-    # Auto-load models if run directly
-    if not st.session_state.models_loaded:
-        load_models_with_status()
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 8080))  
+    debug = os.environ.get('FLASK_ENV') == 'development'
     
-    main()
+    # Check for models at startup
+    models = load_models()
+    available_model_types = list(models.keys())
+    logger.info(f"Available models: {available_model_types}")
+    
+    logger.info(f"Starting API server on port {port}")
+    app.run(host='0.0.0.0', port=port, debug=debug)

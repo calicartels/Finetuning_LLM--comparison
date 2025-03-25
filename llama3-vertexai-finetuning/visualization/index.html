@@ -165,7 +165,7 @@
             overflow-wrap: break-word;
             font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
             font-size: 0.875rem;
-            max-height: 500px;
+            max-height: none;
             overflow-y: auto;
         }
 
@@ -340,7 +340,7 @@
         <div class="card">
             <div class="card-title">API Configuration</div>
             <div class="api-config">
-                <input type="text" id="api-url" placeholder="API URL" value="http://localhost:5000">
+                <input type="text" id="api-url" placeholder="API URL" value="http://localhost:8080">
                 <button class="button button-secondary" id="check-connection">Check Connection</button>
             </div>
             <div id="connection-status" class="status">
@@ -670,13 +670,17 @@
                 
                 // Update output areas
                 if (data.base_model && data.base_model.response_only) {
-                    baseOutput.textContent = data.base_model.response_only;
+                    
+                    let cleanResponse = data.base_model.response_only;
+                    if (cleanResponse.includes("Output:")) {
+                        cleanResponse = cleanResponse.split("Output:").pop();
+                    }
+                    baseOutput.textContent = cleanResponse;
                 } else if (data.base_model && data.base_model.error) {
                     baseOutput.textContent = `Error: ${data.base_model.error}`;
                 } else {
                     baseOutput.textContent = 'No response from base model';
                 }
-                
                 if (data.finetuned_model && data.finetuned_model.response_only) {
                     finetunedOutput.textContent = data.finetuned_model.response_only;
                 } else if (data.finetuned_model && data.finetuned_model.error) {
