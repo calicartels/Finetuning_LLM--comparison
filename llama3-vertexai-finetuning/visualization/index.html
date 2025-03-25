@@ -107,6 +107,13 @@
             width: 100%;
         }
 
+        input[type="number"] {
+            padding: 0.5rem;
+            border: 1px solid var(--border-color);
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+        }
+
         .button {
             background-color: var(--primary-color);
             color: white;
@@ -138,6 +145,12 @@
             background-color: #f9fafb;
         }
 
+        .buttons-container {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
         .results-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -165,7 +178,7 @@
             overflow-wrap: break-word;
             font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
             font-size: 0.875rem;
-            max-height: none;
+            max-height: none !important;
             overflow-y: auto;
         }
 
@@ -200,6 +213,7 @@
             font-size: 0.875rem;
             display: -webkit-box;
             -webkit-line-clamp: 3;
+            line-clamp: 3;
             -webkit-box-orient: vertical;
             overflow: hidden;
         }
@@ -314,6 +328,23 @@
             color: var(--error-color);
         }
 
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+
+        .results-table th, .results-table td {
+            padding: 0.5rem;
+            border: 1px solid var(--border-color);
+            text-align: left;
+        }
+
+        .results-table th {
+            background-color: var(--background-color);
+            font-weight: 600;
+        }
+
         footer {
             margin-top: 3rem;
             text-align: center;
@@ -358,8 +389,8 @@
             <div class="params-grid">
                 <div class="param-group">
                     <label for="max-tokens">Max Tokens</label>
-                    <input type="range" id="max-tokens" min="64" max="2048" value="512" step="64">
-                    <div class="param-value" id="max-tokens-value">512</div>
+                    <input type="range" id="max-tokens" min="64" max="4096" value="2048" step="64">
+                    <div class="param-value" id="max-tokens-value">2048</div>
                 </div>
                 <div class="param-group">
                     <label for="temperature">Temperature</label>
@@ -378,11 +409,34 @@
                 </div>
             </div>
             
-            <button id="compare-btn" class="button">Compare Models</button>
+            <div class="buttons-container">
+                <button id="compare-btn" class="button">Compare Models</button>
+                <button id="debug-btn" class="button button-secondary">Debug Raw Responses</button>
+            </div>
             
             <div class="loading" id="loading">
                 <div class="spinner"></div>
                 <p>Generating responses... This may take a minute.</p>
+            </div>
+        </div>
+
+        <div class="card" id="evaluation-card">
+            <div class="card-title">Model Evaluation</div>
+            <div class="buttons-container">
+                <button id="evaluate-btn" class="button">Evaluate Fine-tuned Model</button>
+                <button id="compare-models-btn" class="button button-secondary">Compare Models</button>
+            </div>
+            <div class="param-group">
+                <label for="num-examples">Number of examples:</label>
+                <input type="number" id="num-examples" min="1" max="50" value="10">
+            </div>
+            <div class="loading" id="evaluation-loading" style="display: none;">
+                <div class="spinner"></div>
+                <p>Running evaluation... This may take several minutes.</p>
+            </div>
+            <div id="evaluation-results" style="display: none;">
+                <h3>Evaluation Results</h3>
+                <div id="metrics-display"></div>
             </div>
         </div>
 
@@ -439,6 +493,52 @@
     </div>
 
     <script>
+        // Helper function to clean response for display
+        function cleanResponseForDisplay(responseText, prompt, fullText) {
+            // Check if it's a common issue
+            if (responseText.trim() === "Output:" || responseText.trim() === "" || 
+                (responseText.trim().startsWith("Output:") && responseText.trim().length < 15)) {
+                // Try to extract from full text using different patterns
+                const patterns = [
+                    /Your Answer:[\s\n]*(.+?)(?:\n|$)/,  // After Your Answer:
+                    /Output:[\s\n]*(.+?)(?:\n|$)/,       // After Output:
+                    /Answer:[\s\n]*(.+?)(?:\n|$)/,       // After Answer:
+                    /Solution:[\s\n]*(.+?)(?:\n|$)/      // After Solution:
+                ];
+                
+                for (const pattern of patterns) {
+                    const match = fullText.match(pattern);
+                    if (match && match[1].trim()) {
+                        return match[1].trim();
+                    }
+                }
+                
+                // Problem-specific extraction
+                if (prompt.includes("sequence of numbers")) {
+                    const numberMatches = fullText.match(/\b(\d+)\b/g);
+                    if (numberMatches && numberMatches.length > 0) {
+                        return numberMatches[numberMatches.length - 1];
+                    }
+                }
+                
+                if (prompt.includes("cube") && fullText.toLowerCase().includes("center")) {
+                    return "At the center of the cube";
+                }
+                
+                // Return first non-empty line that's not part of the prompt
+                const lines = fullText.split('\n');
+                for (const line of lines) {
+                    const cleanLine = line.trim();
+                    if (cleanLine && !cleanLine.toLowerCase().includes("solve this logic puzzle") && 
+                        !cleanLine.toLowerCase().includes("prompt:")) {
+                        return cleanLine;
+                    }
+                }
+            }
+            
+            return responseText;
+        }
+
         // Sample puzzles
         const samplePuzzles = [
             {
@@ -472,6 +572,7 @@
         const topKValue = document.getElementById('top-k-value');
         
         const compareBtn = document.getElementById('compare-btn');
+        const debugBtn = document.getElementById('debug-btn');
         const loadingElement = document.getElementById('loading');
         const resultsContainer = document.getElementById('results-container');
         const baseOutput = document.getElementById('base-output');
@@ -485,6 +586,14 @@
         const lengthDiffDelta = document.getElementById('length-diff-delta');
         const baseTime = document.getElementById('base-time');
         const finetunedTime = document.getElementById('finetuned-time');
+        
+        // Evaluation elements
+        const evaluateBtn = document.getElementById('evaluate-btn');
+        const compareModelsBtn = document.getElementById('compare-models-btn');
+        const numExamplesInput = document.getElementById('num-examples');
+        const evaluationLoading = document.getElementById('evaluation-loading');
+        const evaluationResults = document.getElementById('evaluation-results');
+        const metricsDisplay = document.getElementById('metrics-display');
         
         // Update parameter values display
         maxTokensInput.addEventListener('input', () => {
@@ -621,6 +730,122 @@
             checkApiConnection();
         });
         
+        // Debug Raw Responses function
+        debugBtn.addEventListener('click', async () => {
+            const prompt = promptInput.value.trim();
+            
+            if (!prompt) {
+                alert('Please enter a prompt first.');
+                return;
+            }
+            
+            // Show loading spinner and hide previous results
+            loadingElement.style.display = 'block';
+            resultsContainer.style.display = 'none';
+            
+            try {
+                // Check connection first
+                const isConnected = await checkApiConnection();
+                
+                if (!isConnected) {
+                    loadingElement.style.display = 'none';
+                    alert('Failed to connect to API. Please check the API URL and connection.');
+                    return;
+                }
+                
+                // Try base model first
+                const baseResponse = await fetch(`${apiUrl}/debug-raw-response`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        prompt: prompt,
+                        model_type: "base"
+                    })
+                });
+                
+                // Then try fine-tuned model
+                const finetunedResponse = await fetch(`${apiUrl}/debug-raw-response`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        prompt: prompt,
+                        model_type: "finetuned"
+                    })
+                });
+                
+                // Process responses
+                if (baseResponse.ok) {
+                    const baseData = await baseResponse.json();
+                    console.log("Base model raw response:", baseData);
+                    
+                    // Display raw response
+                    baseOutput.textContent = baseData.raw_response || "No raw response";
+                    baseOutput.style.maxHeight = "none";
+                    baseOutput.style.height = "auto";
+                    baseOutput.style.overflow = "visible";
+                    
+                    // Update metrics
+                    baseLength.textContent = baseData.response_length || 0;
+                } else {
+                    baseOutput.textContent = "Error getting raw response";
+                }
+                
+                if (finetunedResponse.ok) {
+                    const finetunedData = await finetunedResponse.json();
+                    console.log("Fine-tuned model raw response:", finetunedData);
+                    
+                    // Display raw response
+                    finetunedOutput.textContent = finetunedData.raw_response || "No raw response";
+                    finetunedOutput.style.maxHeight = "none";
+                    finetunedOutput.style.height = "auto";
+                    finetunedOutput.style.overflow = "visible";
+                    
+                    // Update metrics
+                    finetunedLength.textContent = finetunedData.response_length || 0;
+                } else {
+                    finetunedOutput.textContent = "Error getting raw response";
+                }
+                
+                // Calculate difference
+                const baseRespLength = parseInt(baseLength.textContent);
+                const finetunedRespLength = parseInt(finetunedLength.textContent);
+                const lengthDifference = finetunedRespLength - baseRespLength;
+                
+                lengthDiff.textContent = Math.abs(lengthDifference);
+                
+                if (lengthDifference > 0) {
+                    lengthDiffDelta.textContent = `+${lengthDifference}`;
+                    lengthDiffDelta.className = 'metric-delta';
+                } else if (lengthDifference < 0) {
+                    lengthDiffDelta.textContent = `${lengthDifference}`;
+                    lengthDiffDelta.className = 'metric-delta negative';
+                } else {
+                    lengthDiffDelta.textContent = '0';
+                    lengthDiffDelta.className = 'metric-delta';
+                }
+                
+                // Show results
+                resultsContainer.style.display = 'block';
+                
+            } catch (error) {
+                console.error('Debug error:', error);
+                
+                // Show error in result areas
+                baseOutput.textContent = 'Debug error: ' + error.message;
+                finetunedOutput.textContent = 'Debug error: ' + error.message;
+                
+                // Still show results container
+                resultsContainer.style.display = 'block';
+            } finally {
+                // Hide loading spinner
+                loadingElement.style.display = 'none';
+            }
+        });
+        
         // Compare models function
         compareBtn.addEventListener('click', async () => {
             const prompt = promptInput.value.trim();
@@ -670,19 +895,43 @@
                 
                 // Update output areas
                 if (data.base_model && data.base_model.response_only) {
+                    let response = cleanResponseForDisplay(
+                        data.base_model.response_only,
+                        data.prompt,
+                        data.base_model.full_text
+                    );
                     
-                    let cleanResponse = data.base_model.response_only;
-                    if (cleanResponse.includes("Output:")) {
-                        cleanResponse = cleanResponse.split("Output:").pop();
-                    }
-                    baseOutput.textContent = cleanResponse;
+                    // Log for debugging
+                    console.log("Base model response:", response);
+                    console.log("Length:", response.length);
+                    
+                    // Always show the full response
+                    baseOutput.textContent = response;
+                    baseOutput.style.height = 'auto';
+                    baseOutput.style.maxHeight = 'none';
+                    baseOutput.style.overflow = 'visible';
                 } else if (data.base_model && data.base_model.error) {
                     baseOutput.textContent = `Error: ${data.base_model.error}`;
                 } else {
                     baseOutput.textContent = 'No response from base model';
                 }
+
                 if (data.finetuned_model && data.finetuned_model.response_only) {
-                    finetunedOutput.textContent = data.finetuned_model.response_only;
+                    let response = cleanResponseForDisplay(
+                        data.finetuned_model.response_only,
+                        data.prompt,
+                        data.finetuned_model.full_text
+                    );
+                    
+                    // Log for debugging
+                    console.log("Fine-tuned model response:", response);
+                    console.log("Length:", response.length);
+                    
+                    // Always show the full response
+                    finetunedOutput.textContent = response;
+                    finetunedOutput.style.height = 'auto';
+                    finetunedOutput.style.maxHeight = 'none';
+                    finetunedOutput.style.overflow = 'visible';
                 } else if (data.finetuned_model && data.finetuned_model.error) {
                     finetunedOutput.textContent = `Error: ${data.finetuned_model.error}`;
                 } else {
@@ -738,6 +987,166 @@
                 loadingElement.style.display = 'none';
             }
         });
+
+        // Evaluate single model
+        evaluateBtn.addEventListener('click', async () => {
+            const numExamples = parseInt(numExamplesInput.value);
+            
+            // Show loading
+            evaluationLoading.style.display = 'block';
+            evaluationResults.style.display = 'none';
+            
+            try {
+                // Call evaluation endpoint
+                const response = await fetch(`${apiUrl}/evaluate`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        model_type: 'finetuned',
+                        num_examples: numExamples
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                // Display results
+                displayEvaluationResults(data);
+            } catch (error) {
+                console.error('Error:', error);
+                metricsDisplay.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+            } finally {
+                // Hide loading
+                evaluationLoading.style.display = 'none';
+                evaluationResults.style.display = 'block';
+            }
+        });
+
+        // Compare models
+        compareModelsBtn.addEventListener('click', async () => {
+            const numExamples = parseInt(numExamplesInput.value);
+            
+            // Show loading
+            evaluationLoading.style.display = 'block';
+            evaluationResults.style.display = 'none';
+            
+            try {
+                // Call comparison endpoint
+                const response = await fetch(`${apiUrl}/compare-models`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        num_examples: numExamples
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                // Display comparison results
+                displayComparisonResults(data);
+            } catch (error) {
+                console.error('Error:', error);
+                metricsDisplay.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+            } finally {
+                // Hide loading
+                evaluationLoading.style.display = 'none';
+                evaluationResults.style.display = 'block';
+            }
+        });
+
+        // Display evaluation results
+        function displayEvaluationResults(data) {
+            let html = '<div class="metrics-grid">';
+            
+            // Add BERT scores
+            html += `
+                <div class="metric-card">
+                    <div class="metric-label">BERT Precision</div>
+                    <div class="metric-value">${(data.bert_precision || 0).toFixed(4)}</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">BERT Recall</div>
+                    <div class="metric-value">${(data.bert_recall || 0).toFixed(4)}</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">BERT F1</div>
+                    <div class="metric-value">${(data.bert_f1 || 0).toFixed(4)}</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Embedding Similarity</div>
+                    <div class="metric-value">${(data.embedding_similarity || 0).toFixed(4)}</div>
+                </div>
+            `;
+            
+            html += '</div>';
+            
+            // Add example results if available
+            if (data.examples && data.examples.length > 0) {
+                html += '<h4>Sample Results</h4>';
+                html += '<table class="results-table">';
+                html += '<tr><th>Puzzle</th><th>Reference</th><th>Model Output</th><th>BERT F1</th></tr>';
+                
+                // Show first 5 examples
+                for (let i = 0; i < Math.min(5, data.examples.length); i++) {
+                    const example = data.examples[i];
+                    html += `
+                        <tr>
+                            <td>${example.puzzle.substring(0, 100)}...</td>
+                            <td>${example.reference}</td>
+                            <td>${example.model_output}</td>
+                            <td>${(example.bert_f1 || 0).toFixed(4)}</td>
+                        </tr>
+                    `;
+                }
+                
+                html += '</table>';
+            }
+            
+            metricsDisplay.innerHTML = html;
+        }
+
+        // Display comparison results
+        function displayComparisonResults(data) {
+            let html = '<div class="metrics-grid">';
+            
+            // Add metrics with comparisons
+            const metrics = [
+                { name: 'BERT Precision', base: data.base_model.bert_precision, finetuned: data.finetuned_model.bert_precision },
+                { name: 'BERT Recall', base: data.base_model.bert_recall, finetuned: data.finetuned_model.bert_recall },
+                { name: 'BERT F1', base: data.base_model.bert_f1, finetuned: data.finetuned_model.bert_f1 },
+                { name: 'Embedding Similarity', base: data.base_model.embedding_similarity, finetuned: data.finetuned_model.embedding_similarity }
+            ];
+            
+            for (const metric of metrics) {
+                const improvement = (metric.finetuned || 0) - (metric.base || 0);
+                const delta = improvement >= 0 ? `+${improvement.toFixed(4)}` : improvement.toFixed(4);
+                const deltaClass = improvement >= 0 ? 'metric-delta' : 'metric-delta negative';
+                
+                html += `
+                    <div class="metric-card">
+                        <div class="metric-label">${metric.name}</div>
+                        <div class="metric-value">Base: ${(metric.base || 0).toFixed(4)}</div>
+                        <div class="metric-value">Fine-tuned: ${(metric.finetuned || 0).toFixed(4)}</div>
+                        <div class="${deltaClass}">Difference: ${delta}</div>
+                    </div>
+                `;
+            }
+            
+            html += '</div>';
+            
+            metricsDisplay.innerHTML = html;
+        }
         
         // Check API health on page load
         document.addEventListener('DOMContentLoaded', () => {

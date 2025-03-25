@@ -8,10 +8,12 @@ from typing import Dict, Any
 
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
+from evaluations import evaluate_model, compare_models
 
 import config
 from auths import setup_google_auth
 from model_service import load_models, generate_text, compare_models, get_available_models
+import traceback
 
 # Configure logging
 logging.basicConfig(
@@ -162,6 +164,195 @@ def get_samples():
         logger.error(f"Error getting samples: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
+@app.route('/raw-response', methods=['POST'])
+def raw_response():
+    """Get raw model response for debugging"""
+    try:
+        data = request.json
+        prompt = data.get('prompt', '')
+        model_type = data.get('model_type', 'base')
+        
+        models = load_models()
+        if model_type not in models:
+            return jsonify({"error": f"Model '{model_type}' not available"})
+            
+        model_info = models[model_type]
+        endpoint = model_info["endpoint"]
+        
+        # Format prompt
+        if not prompt.startswith("Solve this logic puzzle:"):
+            formatted_prompt = f"Solve this logic puzzle:\n{prompt}"
+        else:
+            formatted_prompt = prompt
+            
+        # Get prediction
+        prediction = endpoint.predict(
+            instances=[{"prompt": formatted_prompt}],
+            parameters={
+                "maxOutputTokens": 1024,
+                "temperature": 0.2,
+                "topK": 40,
+                "topP": 0.8
+            }
+        )
+        
+        # Extract raw text
+        raw_text = ""
+        if hasattr(prediction, 'predictions') and isinstance(prediction.predictions, list):
+            raw_response = prediction.predictions[0]
+            if isinstance(raw_response, str):
+                raw_text = raw_response
+                
+        return jsonify({
+            "raw_text": raw_text,
+            "length": len(raw_text)
+        })
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/debug-response', methods=['POST'])
+def debug_response():
+    """Debug raw model responses"""
+    try:
+        data = request.json
+        
+        if not data or 'prompt' not in data:
+            return jsonify({"error": "Missing required field: prompt"}), 400
+        
+        prompt = data['prompt']
+        model_type = data.get('model_type', 'base')
+        
+        # Load models
+        models = load_models()
+        
+        if model_type not in models:
+            return jsonify({"error": f"Model type '{model_type}' not available"})
+        
+        model_info = models[model_type]
+        endpoint = model_info["endpoint"]
+        
+        # Format the prompt
+        formatted_prompt = prompt
+        if not prompt.startswith("Solve this logic puzzle:"):
+            formatted_prompt = f"Solve this logic puzzle:\n{prompt}"
+        
+        # Get raw prediction
+        prediction = endpoint.predict(
+            instances=[{"prompt": formatted_prompt}],
+            parameters={
+                "maxOutputTokens": 1024,
+                "temperature": 0.2,
+                "topK": 40,
+                "topP": 0.8
+            }
+        )
+        
+        # Return the complete raw response for inspection
+        response_text = ""
+        if hasattr(prediction, 'predictions') and isinstance(prediction.predictions, list):
+            raw_response = prediction.predictions[0]
+            if isinstance(raw_response, str):
+                response_text = raw_response
+        
+        return jsonify({
+            "raw_response": response_text,
+            "response_length": len(response_text)
+        })
+    
+    except Exception as e:
+        logger.error(f"Error in debug endpoint: {str(e)}")
+        return jsonify({
+            "error": str(e),
+            "traceback": traceback.format_exc()
+        }), 500
+
+
+
+@app.route('/debug-raw-response', methods=['POST'])
+def debug_raw_response():
+    """Get raw model response for debugging"""
+    try:
+        data = request.json
+        
+        if not data or 'prompt' not in data:
+            return jsonify({"error": "Missing required field: prompt"}), 400
+        
+        prompt = data['prompt']
+        model_type = data.get('model_type', 'base')
+        
+        # Load models
+        models = load_models()
+        
+        if model_type not in models:
+            return jsonify({"error": f"Model type '{model_type}' not available"})
+        
+        model_info = models[model_type]
+        endpoint = model_info["endpoint"]
+        
+        # Format the prompt
+        formatted_prompt = prompt
+        if not prompt.startswith("Solve this logic puzzle:"):
+            formatted_prompt = f"Solve this logic puzzle:\n{prompt}"
+        
+        # Get raw prediction
+        prediction = endpoint.predict(
+            instances=[{"prompt": formatted_prompt}],
+            parameters={
+                "maxOutputTokens": 4096,
+                "temperature": 0.2,
+                "topK": 40,
+                "topP": 0.8
+            }
+        )
+        
+        # Extract the complete raw response
+        response_text = ""
+        if hasattr(prediction, 'predictions') and isinstance(prediction.predictions, list):
+            raw_response = prediction.predictions[0]
+            if isinstance(raw_response, str):
+                response_text = raw_response
+                
+        return jsonify({
+            "raw_response": response_text,
+            "response_length": len(response_text),
+            "prediction_type": str(type(prediction)),
+            "has_predictions_attr": hasattr(prediction, "predictions")
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in debug endpoint: {str(e)}")
+        return jsonify({
+            "error": str(e),
+            "traceback": traceback.format_exc()
+        }), 500
+
+
+
+@app.route('/evaluate', methods=['POST'])
+def evaluate():
+    """Evaluate model performance on LOGIC-701 dataset"""
+    try:
+        data = request.json
+        model_type = data.get('model_type', 'finetuned')
+        num_examples = data.get('num_examples', 10)
+        results = evaluate_model(model_type=model_type, num_examples=num_examples)
+        return jsonify(results)
+    except Exception as e:
+        logger.error(f"Error in evaluate endpoint: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/compare-models', methods=['POST'])
+def compare_model_endpoint():
+    """Compare base and fine-tuned models on LOGIC-701 dataset"""
+    try:
+        data = request.json
+        num_examples = data.get('num_examples', 10)
+        results = compare_models(num_examples=num_examples)
+        return jsonify(results)
+    except Exception as e:
+        logger.error(f"Error in compare-models endpoint: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8080))  
