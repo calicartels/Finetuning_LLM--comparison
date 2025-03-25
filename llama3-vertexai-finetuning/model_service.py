@@ -94,9 +94,11 @@ def generate_text(
     
     model_info = models[model_type]
     
+    # Format the prompt according to dataset structure
     formatted_prompt = prompt
     
-    if "-" in prompt and not "Story:" in prompt:
+    # CASE 1: Original LogicPuzzleBaron bullet point format
+    if "-" in prompt and "Story:" not in prompt:
         parts = prompt.split("-", 1)
         main_story = parts[0].strip()
         
@@ -112,14 +114,19 @@ def generate_text(
                 clues.append(f"'{point.strip()}'")
         
         clues_str = "[" + ", ".join(clues) + "]"
-        formatted_prompt = f"Solve this logic puzzle:\nStory: {main_story}\nClues: {clues_str}"
+        formatted_prompt = f"Solve this logic puzzle:\n{main_story}\n\nClues: {clues_str}"
+    
+    # CASE 2: Already has Story and Clues format
     elif "Story:" in prompt and "Clues:" in prompt:
         if not prompt.startswith("Solve this logic puzzle:"):
             formatted_prompt = f"Solve this logic puzzle:\n{prompt}"
-    elif not prompt.startswith("Solve this logic puzzle:"):
-        formatted_prompt = f"Solve this logic puzzle:\nStory: {prompt}\nClues: []"
     
-    print(f"Formatted prompt: {formatted_prompt[:200]}...")
+    # CASE 3: LOGIC-701 format (or any generic text)
+    # Simply prepend the instruction if needed
+    elif not prompt.startswith("Solve this logic puzzle:"):
+        formatted_prompt = f"Solve this logic puzzle:\n{prompt}"
+    
+    logger.info(f"Formatted prompt: {formatted_prompt[:200]}...")
     
     try:
         start_time = time.time()

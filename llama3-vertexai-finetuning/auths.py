@@ -136,10 +136,20 @@ def verify_vertex_ai_access() -> bool:
         Boolean indicating if Vertex AI is accessible
     """
     try:
-        # Try to list models to test access
-        from vertexai.language_models import TextGenerationModel
-        models = TextGenerationModel.list()
-        logger.info(f"Successfully accessed Vertex AI. Found {len(models)} text generation models.")
+        # Try to access Vertex AI API in a different way
+        from google.cloud import aiplatform
+        
+        # Initialize the client
+        client = aiplatform.gapic.ModelServiceClient(
+            client_options={"api_endpoint": f"{config.REGION}-aiplatform.googleapis.com"}
+        )
+        
+        # Try to list models in your project
+        parent = f"projects/{config.PROJECT_ID}/locations/{config.REGION}"
+        response = client.list_models(parent=parent, page_size=10)
+        
+        # If we get here, we have access
+        logger.info(f"Successfully accessed Vertex AI in {config.REGION}")
         return True
     except Exception as e:
         logger.error(f"Error accessing Vertex AI: {str(e)}")

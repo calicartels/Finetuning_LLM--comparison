@@ -4,12 +4,20 @@ Configuration settings for Llama 3 fine-tuning on Vertex AI
 import os
 from pathlib import Path
 
+import os
+
 # Google Cloud settings
-PROJECT_ID = "capstone-449418"
-LOCATION = "us-central1"
-BUCKET_NAME = "finetune_llm_jon"
-REGION = "us-central1"
-BUCKET_URI = f"gs://finetune_llm_jon"
+PROJECT_ID = "aipi590-454522"
+LOCATION = "us-east1"
+REGION = "us-east1"
+BUCKET_NAME = "logic-puzzle-dataset"
+BUCKET_URI = f"gs://{BUCKET_NAME}"
+
+# Path to credentials folder at root
+CREDENTIALS_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "credentials")
+
+# Explicitly set the path to your aipi590-454522 service account key
+DEFAULT_CREDENTIALS_PATH = os.path.join(CREDENTIALS_FOLDER, "aipi590-454522-84ac69f97395.json")
 
 # Path to credentials folder at root
 CREDENTIALS_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "credentials")

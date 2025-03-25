@@ -1,7 +1,7 @@
 import os
 from google.cloud import storage
 
-def upload_to_gcs(local_path, gcs_path, bucket_name="finetune_llm_jon"):
+def upload_to_gcs(local_path, gcs_path, bucket_name="logic-puzzle-dataset"):
     """Upload a file to Google Cloud Storage"""
     client = storage.Client()
     bucket = client.bucket(bucket_name)
