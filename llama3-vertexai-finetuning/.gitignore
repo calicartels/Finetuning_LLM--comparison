@@ -1,0 +1,3 @@
+credentials/*
+__pycache__/*
+*.pycllama3-vertexai-finetuning/setup_credentials.py
