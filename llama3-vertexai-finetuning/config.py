@@ -33,7 +33,7 @@ BASE_MODEL_DISPLAY_NAME = "Llama 3 8B"
 TUNED_MODEL_DISPLAY_NAME = "llama3-logic-puzzle"
 
 # Dataset settings
-DATASET_ID = "olegbask/LogicPuzzleBaron"
+DATASET_ID = "hivaze/LOGIC-701"
 TRAIN_TEST_SPLIT = 0.9
 
 # Training hyperparameters
