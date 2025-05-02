@@ -1,0 +1,42 @@
+{
+  "Puzzle 1": {
+    "question": "In a factory, there are four machines. Each machine can complete a specific task in a certain amount of time. Machine A can finish the task in 2 hours, Machine B in 4 hours, Machine C in 6 hours, and Machine D in 8 hours. If you need to complete the task just once, and only two machines can be operated simultaneously due to power restrictions, which combination of two machines should you choose to minimize the total time to complete the task?",
+    "answer": "To minimize the total time to complete the task, you need to find out which two machines have the highest work rate when combined. The work rate for each machine is the reciprocal of the time it requires to finish the task (1/time). Machine A's rate is 1/2, Machine B's 1/4, Machine C's 1/6, and Machine D's 1/8. You combine the rates of two machines to find the best pair:\n\n- A + B = 1/2 + 1/4 = 3/4\n- A + C = 1/2 + 1/6 = 2/3\n- A + D = 1/2 + 1/8 = 5/8\n- B + C = 1/4 + 1/6 = 5/12\n- B + D = 1/4 + 1/8 = 3/8\n- C + D = 1/6 + 1/8 = 7/24\n\nThe highest combined rate is when Machines A and B work together (3/4). This means they will finish the task in 4/3 hours, or 1 hour and 20 minutes, which is faster than any other combination. Therefore, operating Machine A and Machine B simultaneously will minimize the total time."
+  },
+  "Puzzle 2": {
+    "question": "Imagine a cube with sides of length 2 units. Inside of it, there is a single point located somewhere, such that when you draw lines from all of the cube's eight corners to this point, the resulting pyramid-like shapes all have equal volume. Where is the point located within the cube?",
+    "answer": "For all eight pyramids formed by the point and the cube's corners to have equal volume, the point must be equidistant from all corners of the cube. The only point inside the cube that satisfies this condition is the center of the cube. Each pyramid will then occupy one-eighth of the cube's volume. Since the cube has a side of 2 units, its total volume is 2^3 = 8 cubic units. The volume of one pyramid is 1 unit. The point must be at (1, 1, 1), which is the center of the cube."
+  },
+  "Puzzle 3": {
+    "question": "In a remote village, every family decided to plant trees. There are 100 families, and each family plants either 1, 2, or 3 trees. It is known that the probability of a family planting 1 tree is 50%, the probability of planting 2 trees is 30%, and for planting 3 trees is 20%. You are a researcher and you want to compute the expected number of trees planted by all families in the village. What is the expected number of trees?",
+    "answer": "To solve this, you should find the expected number of trees a single family is expected to plant and then multiply it by the number of families. For one family, the expected number of trees is (1 tree * 50% probability) + (2 trees * 30% probability) + (3 trees * 20% probability), which equals 0.5 + 0.6 + 0.6 = 1.7 trees per family. There are 100 families, so the expected number of trees is 100 families * 1.7 trees/family = 170 trees."
+  },
+  "Puzzle 4": {
+    "question": "A man builds a rectangular house with all four sides facing south. A bear walks by the house. What color is the bear?",
+    "answer": "The only place where all four sides of a house could face south would be the North Pole. If a bear walked by, it would have to be a polar bear, which is white."
+  },
+  "Puzzle 5": {
+    "question": "If you add half of a number to a third of the same number, the result is 60. What is the original number?",
+    "answer": "Let the original number be x. Then, (1/2)x + (1/3)x = 60. To solve for x, find a common denominator, which is 6 in this case, so we can rewrite the equation as (3/6)x + (2/6)x = 60. Combine like terms to get (5/6)x = 60. Multiply both sides by 6/5 to solve for x: x = (60 * 6) / 5. x = 360 / 5. x = 72. Therefore, the original number is 72."
+  },
+  "Puzzle 6": {
+    "question": "A man went outside in the rain with no protection, but not a single hair on his head got wet. How is this possible?",
+    "answer": "The man was bald, so he had no hair to get wet in the rain."
+  },
+  "Puzzle 7": {
+    "question": "Adam, Bella, Carlos, and Diana are standing at the corners of a large square field. Each person is instructed to walk halfway towards the person on their right and then stops. What shape do they form when all of them stop walking?",
+    "answer": "If each person walks halfway towards the person on their right, they will all stop at the midpoint of each side of the square field. Hence, they will form a smaller square which is rotated 45 degrees compared to the original one."
+  },
+  "Puzzle 8": {
+    "question": "In a certain small town, there are 3 weather forecasters: Alice, Bob, and Carol. Alice is correct 70% of the time, Bob is correct 60% of the time, and Carol is correct 50% of the time. On a particular day, all three forecasters predict rain, but only one of the forecasters will be correct for that day. What is the probability that it will rain considering all their predictions?",
+    "answer": "To solve this problem, we will calculate the probability that all forecasters are wrong and subtract it from 1. The probability that Alice is wrong is 30%, Bob is wrong is 40%, and Carol is wrong is 50%. So, the probability that all of them are wrong is 0.3*0.4*0.5 = 0.06 or 6%. Therefore, the probability that it will not rain is 6%. Thus, the probability that it will rain is 1 - 0.06 = 0.94 or 94%."
+  },
+  "Puzzle 9": {
+    "question": "Alice, Bob, and Charlie are planning to meet in a coffee shop that is equidistant from their homes. They can choose to take a bus, a taxi, or to walk. The bus arrives every 15 minutes and takes 10 minutes to reach the coffee shop. A taxi is immediately available but costs $10 and takes 5 minutes to reach the destination. Walking takes 30 minutes. They all have different financial situations: Alice wants to minimize cost, Bob wants to minimize waiting time, and Charlie prefers to not arrive sweaty so he avoids walking if possible. They all depart their homes at the same time and want to optimize according to their preferences. What mode of transportation should each one take?",
+    "answer": "Alice should take the bus as it costs nothing and she is minimizing the cost. Bob should take a taxi to minimize waiting since he does not need to wait for it to depart, ensuring the fastest arrival. Charlie should also take the bus as it does not involve walking and the waiting time is acceptable considering he avoids arriving sweaty."
+  },
+  "Puzzle 10": {
+    "question": "You are presented with a sequence of numbers: 2, 6, 12, 20, 30, ... You need to determine the next number in the sequence. Hint: Consider the relationship between the position of the number in the sequence and its value.",
+    "answer": "The sequence adds consecutive even numbers to the previous number. The first number is 2, then 2+4=6, 6+6=12, 12+8=20, 20+10=30, thus the next term is 30+12=42."
+  }
+}
