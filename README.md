@@ -253,6 +253,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - Google Cloud Vertex AI team for the model hosting infrastructure
 - The Hugging Face team for transformer models
 - The Flask team for the web framework
-
-## Contact
-Project Link: [https://github.com/yourusername/LLMs_Finetuning](https://github.com/yourusername/LLMs_Finetuning) 
